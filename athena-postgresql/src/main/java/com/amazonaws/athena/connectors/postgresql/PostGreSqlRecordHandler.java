@@ -73,6 +73,10 @@ public class PostGreSqlRecordHandler
     private static final int EXPORT_FETCH_SIZE = 3000;
     private static final int DECIMAL_BIT_WIDTH = 128;
     private static final String DEFAULT_SCALE_KEY = "default_scale";
+    // Fallback scale for unconstrained NUMERIC (reported by PostgreSQL as precision 0 / scale 0). A zero
+    // default silently drops every fractional digit; 18 preserves them (matches Spark's DecimalType default
+    // and the Databricks connector fallback of DECIMAL(38,18)). An explicit "default_scale" still overrides.
+    private static final String DEFAULT_SCALE = "18";
 
     private final JdbcSplitQueryBuilder jdbcSplitQueryBuilder;
 
@@ -145,7 +149,7 @@ public class PostGreSqlRecordHandler
             ArrowType type;
             if (metadata.getColumnType(column) == Types.NUMERIC && metadata.getPrecision(column) == 0 && metadata.getScale(column) <= 0) {
                 type = new ArrowType.Decimal(JdbcArrowTypeConverter.DEFAULT_PRECISION,
-                        Integer.parseInt(configOptions.getOrDefault(DEFAULT_SCALE_KEY, "0")), DECIMAL_BIT_WIDTH);
+                        Integer.parseInt(configOptions.getOrDefault(DEFAULT_SCALE_KEY, DEFAULT_SCALE)), DECIMAL_BIT_WIDTH);
             }
             else {
                 try {
